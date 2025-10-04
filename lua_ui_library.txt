@@ -202,7 +202,269 @@ return {
         AccentCorner.CornerRadius = UDim.new(0, 1)
         AccentCorner.Parent = AccentLine
 
-        error("line 381: Lucide-Icons | Failed to find icon by the name of " .. tostring(WindowIcon))
+        -- Заголовок окна
+        local TitleLabel = Instance.new("TextLabel")
+        TitleLabel.Name = "TitleLabel"
+        TitleLabel.Parent = TitleBar
+        TitleLabel.BackgroundTransparency = 1
+        TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+        TitleLabel.Size = UDim2.new(0, 300, 1, 0)
+        TitleLabel.Font = Enum.Font.GothamBold
+        TitleLabel.Text = title
+        TitleLabel.TextColor3 = ThemeColors.Text
+        TitleLabel.TextSize = 16
+        TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TitleLabel.ZIndex = 4
+
+        -- Кнопка закрытия
+        local CloseButton = Instance.new("TextButton")
+        CloseButton.Name = "CloseButton"
+        CloseButton.Parent = TitleBar
+        CloseButton.BackgroundColor3 = ThemeColors.Error
+        CloseButton.BorderSizePixel = 0
+        CloseButton.Position = UDim2.new(1, -35, 0.5, -12)
+        CloseButton.Size = UDim2.new(0, 24, 0, 24)
+        CloseButton.Font = Enum.Font.GothamBold
+        CloseButton.Text = "×"
+        CloseButton.TextColor3 = Colors.Text
+        CloseButton.TextSize = 18
+        CloseButton.ZIndex = 4
+
+        local CloseCorner = Instance.new("UICorner")
+        CloseCorner.CornerRadius = UDim.new(0, 6)
+        CloseCorner.Parent = CloseButton
+
+        CloseButton.MouseButton1Click:Connect(function()
+            ScreenGui:Destroy()
+        end)
+
+        -- Контейнер для навигации (вкладки)
+        local NavigationFrame = Instance.new("Frame")
+        NavigationFrame.Name = "NavigationFrame"
+        NavigationFrame.Parent = MainFrame
+        NavigationFrame.BackgroundColor3 = ThemeColors.NavBackground
+        NavigationFrame.BorderSizePixel = 0
+        NavigationFrame.Position = UDim2.new(0, 0, 0, 50)
+        NavigationFrame.Size = UDim2.new(0, 150, 1, -50)
+        NavigationFrame.ZIndex = 3
+
+        local NavPadding = Instance.new("UIPadding")
+        NavPadding.Parent = NavigationFrame
+        NavPadding.PaddingTop = UDim.new(0, 10)
+        NavPadding.PaddingBottom = UDim.new(0, 10)
+        NavPadding.PaddingLeft = UDim.new(0, 10)
+        NavPadding.PaddingRight = UDim.new(0, 10)
+
+        local NavLayout = Instance.new("UIListLayout")
+        NavLayout.Parent = NavigationFrame
+        NavLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        NavLayout.Padding = UDim.new(0, 5)
+
+        -- Контейнер для содержимого вкладок
+        local ContentFrame = Instance.new("Frame")
+        ContentFrame.Name = "ContentFrame"
+        ContentFrame.Parent = MainFrame
+        ContentFrame.BackgroundTransparency = 1
+        ContentFrame.Position = UDim2.new(0, 150, 0, 50)
+        ContentFrame.Size = UDim2.new(1, -150, 1, -50)
+        ContentFrame.ZIndex = 3
+
+        -- Делаем окно перетаскиваемым
+        local dragging = false
+        local dragInput, mousePos, framePos
+
+        TitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                mousePos = input.Position
+                framePos = MainFrame.Position
+                
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        TitleBar.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = input
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - mousePos
+                MainFrame.Position = UDim2.new(
+                    framePos.X.Scale,
+                    framePos.X.Offset + delta.X,
+                    framePos.Y.Scale,
+                    framePos.Y.Offset + delta.Y
+                )
+                ShadowFrame.Position = UDim2.new(
+                    framePos.X.Scale,
+                    framePos.X.Offset + delta.X - 5,
+                    framePos.Y.Scale,
+                    framePos.Y.Offset + delta.Y - 5
+                )
+            end
+        end)
+
+        -- Таблица для хранения вкладок
+        local tabs = {}
+        local currentTab = nil
+
+        -- Возвращаем объект окна с методами
+        return {
+            MainFrame = MainFrame,
+            NavigationFrame = NavigationFrame,
+            ContentFrame = ContentFrame,
+            Tabs = tabs,
+            CurrentTab = currentTab,
+            
+            -- Метод для создания вкладки
+            CreateTab = function(self, name, icon)
+                local TabButton = Instance.new("TextButton")
+                TabButton.Name = name .. "TabButton"
+                TabButton.Parent = NavigationFrame
+                TabButton.BackgroundColor3 = ThemeColors.Surface
+                TabButton.BorderSizePixel = 0
+                TabButton.Size = UDim2.new(1, 0, 0, 35)
+                TabButton.Font = Enum.Font.Gotham
+                TabButton.Text = "  " .. name
+                TabButton.TextColor3 = ThemeColors.TextSecondary
+                TabButton.TextSize = 14
+                TabButton.TextXAlignment = Enum.TextXAlignment.Left
+                TabButton.ZIndex = 4
+
+                local TabCorner = Instance.new("UICorner")
+                TabCorner.CornerRadius = UDim.new(0, 6)
+                TabCorner.Parent = TabButton
+
+                -- Контейнер содержимого вкладки
+                local TabContent = Instance.new("ScrollingFrame")
+                TabContent.Name = name .. "Content"
+                TabContent.Parent = ContentFrame
+                TabContent.BackgroundTransparency = 1
+                TabContent.BorderSizePixel = 0
+                TabContent.Size = UDim2.new(1, 0, 1, 0)
+                TabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+                TabContent.ScrollBarThickness = 4
+                TabContent.ScrollBarImageColor3 = ThemeColors.Accent
+                TabContent.Visible = false
+                TabContent.ZIndex = 3
+
+                local ContentPadding = Instance.new("UIPadding")
+                ContentPadding.Parent = TabContent
+                ContentPadding.PaddingTop = UDim.new(0, 10)
+                ContentPadding.PaddingBottom = UDim.new(0, 10)
+                ContentPadding.PaddingLeft = UDim.new(0, 15)
+                ContentPadding.PaddingRight = UDim.new(0, 15)
+
+                local ContentLayout = Instance.new("UIListLayout")
+                ContentLayout.Parent = TabContent
+                ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                ContentLayout.Padding = UDim.new(0, 8)
+
+                -- Автоматическое обновление размера Canvas
+                ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    TabContent.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 20)
+                end)
+
+                -- Обработка клика на вкладку
+                TabButton.MouseButton1Click:Connect(function()
+                    -- Скрываем все вкладки
+                    for _, tab in pairs(tabs) do
+                        tab.Content.Visible = false
+                        tab.Button.BackgroundColor3 = ThemeColors.Surface
+                        tab.Button.TextColor3 = ThemeColors.TextSecondary
+                    end
+                    
+                    -- Показываем текущую
+                    TabContent.Visible = true
+                    TabButton.BackgroundColor3 = ThemeColors.Accent
+                    TabButton.TextColor3 = ThemeColors.Text
+                    self.CurrentTab = name
+                end)
+
+                -- Сохраняем вкладку
+                tabs[name] = {
+                    Button = TabButton,
+                    Content = TabContent
+                }
+
+                -- Если это первая вкладка - активируем её
+                if #tabs == 1 then
+                    TabContent.Visible = true
+                    TabButton.BackgroundColor3 = ThemeColors.Accent
+                    TabButton.TextColor3 = ThemeColors.Text
+                    self.CurrentTab = name
+                end
+
+                -- Возвращаем объект вкладки с методами
+                return setmetatable({
+                    Name = name,
+                    Content = TabContent,
+                    Button = TabButton
+                }, {
+                    __index = function(t, k)
+                        -- Перенаправляем все методы создания элементов
+                        if k == "CreateSection" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateSection(Library, options)
+                            end
+                        elseif k == "CreateButton" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateButton(Library, options)
+                            end
+                        elseif k == "CreateParagraph" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateParagraph(Library, options)
+                            end
+                        elseif k == "CreateDivider" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateDivider(Library, options)
+                            end
+                        elseif k == "CreateToggle" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateToggle(Library, options)
+                            end
+                        elseif k == "CreateSlider" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateSlider(Library, options)
+                            end
+                        elseif k == "CreateInput" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateInput(Library, options)
+                            end
+                        elseif k == "CreateKeyBind" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateKeyBind(Library, options)
+                            end
+                        elseif k == "CreateDropdown" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateDropdown(Library, options)
+                            end
+                        elseif k == "CreateColorPicker" then
+                            return function(_, options)
+                                options.parent = TabContent
+                                return Library.CreateColorPicker(Library, options)
+                            end
+                        end
+                    end
+                })
+            end
+        }
     end,
 
     -- ==================== СОЗДАНИЕ ВКЛАДКИ ====================
