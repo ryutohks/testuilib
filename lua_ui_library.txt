@@ -1,0 +1,763 @@
+-- UI Library для Roblox
+-- Библиотека для создания кастомного GUI интерфейса
+
+local fenv = getfenv()
+
+-- Получение сервисов
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+
+-- Цветовая палитра
+local Colors = {
+    -- Основные цвета фона
+    Background = Color3.fromRGB(15, 15, 25),
+    Secondary = Color3.fromRGB(25, 25, 35),
+    
+    -- Акцентные цвета (фиолетовые)
+    Accent = Color3.fromRGB(138, 43, 226),
+    AccentSecondary = Color3.fromRGB(118, 23, 206),
+    
+    -- Текст
+    Text = Color3.fromRGB(255, 255, 255),
+    TextSecondary = Color3.fromRGB(180, 180, 180),
+    
+    -- Дополнительные цвета поверхностей
+    NavBackground = Color3.fromRGB(20, 20, 30),
+    Surface = Color3.fromRGB(30, 30, 40),
+    SurfaceVariant = Color3.fromRGB(35, 35, 45),
+    
+    -- Статусные цвета
+    Success = Color3.fromRGB(40, 201, 64),
+    Warning = Color3.fromRGB(255, 189, 46),
+    Error = Color3.fromRGB(255, 95, 87),
+    Border = Color3.fromRGB(0, 0, 0),
+}
+
+-- Функция для проверки автозагрузки
+fenv.getAutoLoad = function()
+    local HttpService = game:GetService("HttpService")
+    return false
+end
+
+-- Основная библиотека UI
+return {
+    Settings = {},
+    isMinimized = false,
+    BlurEffect = nil,
+
+    -- ==================== СОЗДАНИЕ ОСНОВНОГО ОКНА ====================
+    CreateMain = function(self, options)
+        local title = options.title
+        local ToggleUI = options.ToggleUI
+        local WindowIcon = options.WindowIcon
+        local WindowHeight = options.WindowHeight
+        local WindowWidth = options.WindowWidth
+        local Theme = options.Theme
+        local alwaysIconOnly = options.alwaysIconOnly
+        local Config = options.Config
+        local Blur = options.Blur
+
+        -- Извлечение параметров конфигурации
+        local ConfigEnabled = options.Config.Enabled
+        local FolderName = options.Config.FolderName
+        local FileName = options.Config.FileName
+        
+        -- Параметры размытия
+        local BlurEnabled = options.Blur.Enable
+        
+        -- Цвета темы
+        local ThemeColors = {
+            AccentSecondary = options.Theme.AccentSecondary,
+            Text = options.Theme.Text,
+            Border = options.Theme.Border,
+            Accent = options.Theme.Accent,
+            Warning = options.Theme.Warning,
+            TextSecondary = options.Theme.TextSecondary,
+            Success = options.Theme.Success,
+            SurfaceVariant = options.Theme.SurfaceVariant,
+            NavBackground = options.Theme.NavBackground,
+            Background = options.Theme.Background,
+            Error = options.Theme.Error,
+            Secondary = options.Theme.Secondary,
+        }
+
+        -- Размер окна
+        local WindowSize = UDim2.new(0, options.WindowWidth, 0, options.WindowHeight)
+
+        -- Создание основного ScreenGui
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = options.Name
+        ScreenGui.Parent = game.CoreGui
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+        -- Рамка тени
+        local ShadowFrame = Instance.new("Frame")
+        ShadowFrame.Name = "ShadowFrame"
+        ShadowFrame.Parent = ScreenGui
+        ShadowFrame.BackgroundColor3 = options.Theme.Shadow
+        ShadowFrame.BackgroundTransparency = 0.7
+        ShadowFrame.BorderSizePixel = 0
+        ShadowFrame.Position = UDim2.new(0.5, -245, 0.5, -195)
+        ShadowFrame.Size = UDim2.new(0, WindowSize.X.Offset + 10, 0, WindowSize.Y.Offset + 10)
+        ShadowFrame.ZIndex = 0
+
+        local ShadowCorner = Instance.new("UICorner")
+        ShadowCorner.CornerRadius = UDim.new(0, 12)
+        ShadowCorner.Parent = ShadowFrame
+
+        -- Основная рамка окна
+        local MainFrame = Instance.new("Frame")
+        MainFrame.Name = "MainFrame"
+        MainFrame.Parent = ScreenGui
+        MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        MainFrame.BackgroundTransparency = options.Blur.value
+        MainFrame.BorderSizePixel = 0
+        MainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+        MainFrame.Size = options.WindowSize
+        MainFrame.ZIndex = 1
+
+        -- Обводка окна
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Parent = MainFrame
+        Stroke.Color = ThemeColors.Border
+        Stroke.Thickness = 1
+        Stroke.Transparency = 0.5
+
+        local MainCorner = Instance.new("UICorner")
+        MainCorner.CornerRadius = UDim.new(0, 12)
+        MainCorner.Parent = MainFrame
+
+        -- Градиентный оверлей
+        local GradientOverlay = Instance.new("Frame")
+        GradientOverlay.Name = "GradientOverlay"
+        GradientOverlay.Parent = MainFrame
+        GradientOverlay.BackgroundTransparency = 1
+        GradientOverlay.Size = UDim2.new(1, 0, 1, 0)
+        GradientOverlay.ZIndex = 2
+
+        local GradientCorner = Instance.new("UICorner")
+        GradientCorner.CornerRadius = UDim.new(0, 12)
+        GradientCorner.Parent = GradientOverlay
+
+        local Gradient = Instance.new("UIGradient")
+        Gradient.Parent = GradientOverlay
+        Gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+        })
+        Gradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.98),
+            NumberSequenceKeypoint.new(0.5, 0.99),
+            NumberSequenceKeypoint.new(1, 0.97),
+        })
+        Gradient.Rotation = 45
+
+        -- Эффект размытия
+        local BlurEffect = Instance.new("BlurEffect")
+        BlurEffect.Size = 50
+        BlurEffect.Parent = workspace.CurrentCamera
+        self.BlurEffect = BlurEffect
+
+        -- Обработчик ввода
+        local InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            -- Здесь будет логика обработки ввода
+        end)
+
+        -- Заголовок окна
+        local TitleBar = Instance.new("Frame")
+        TitleBar.Name = "TitleBar"
+        TitleBar.Parent = MainFrame
+        TitleBar.BackgroundColor3 = options.Theme.Surface
+        TitleBar.BackgroundTransparency = 0.1
+        TitleBar.Position = UDim2.new(0, 0, 0, 0)
+        TitleBar.Size = UDim2.new(1, 0, 0, 50)
+        TitleBar.ZIndex = 3
+
+        local TitleCorner = Instance.new("UICorner")
+        TitleCorner.CornerRadius = UDim.new(0, 12)
+        TitleCorner.Parent = TitleBar
+
+        local TitleGradient = Instance.new("UIGradient")
+        TitleGradient.Parent = TitleBar
+        TitleGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
+        })
+        TitleGradient.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.95),
+            NumberSequenceKeypoint.new(1, 0.98),
+        })
+
+        -- Акцентная линия под заголовком
+        local AccentLine = Instance.new("Frame")
+        AccentLine.Name = "AccentLine"
+        AccentLine.Parent = TitleBar
+        AccentLine.BackgroundColor3 = ThemeColors.Accent
+        AccentLine.BorderSizePixel = 0
+        AccentLine.Position = UDim2.new(0, 15, 1, -2)
+        AccentLine.Size = UDim2.new(1, -30, 0, 2)
+
+        local AccentCorner = Instance.new("UICorner")
+        AccentCorner.CornerRadius = UDim.new(0, 1)
+        AccentCorner.Parent = AccentLine
+
+        error("line 381: Lucide-Icons | Failed to find icon by the name of " .. tostring(WindowIcon))
+    end,
+
+    -- ==================== СОЗДАНИЕ ВКЛАДКИ ====================
+    CreateTab = function(self, name, icon)
+        error("line 961: Main GUI must be created first!")
+    end,
+
+    -- ==================== СОЗДАНИЕ СЕКЦИИ ====================
+    CreateSection = function(self, options)
+        local flag = options.flag
+        local text = options.text
+
+        local Section = Instance.new("Frame")
+        Section.Name = "Section"
+        Section.Parent = options.parent
+        Section.BackgroundTransparency = 1
+        Section.Size = UDim2.new(1, 0, 0, 30)
+
+        local SectionLabel = Instance.new("TextLabel")
+        SectionLabel.Parent = Section
+        SectionLabel.BackgroundTransparency = 1
+        SectionLabel.Position = UDim2.new(0, 4, 0, 4)
+        SectionLabel.Size = UDim2.new(1, -8, 0, 18)
+        SectionLabel.Font = Enum.Font.GothamBold
+        SectionLabel.Text = text
+        SectionLabel.TextColor3 = Colors.Text
+        SectionLabel.TextSize = 15
+        SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+        SectionLabel.TextYAlignment = Enum.TextYAlignment.Center
+
+        local Divider = Instance.new("Frame")
+        Divider.Parent = Section
+        Divider.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        Divider.BorderSizePixel = 0
+        Divider.Position = UDim2.new(0, 0, 0, 26)
+        Divider.Size = UDim2.new(1, 0, 0, 1)
+
+        return {
+            Get = function()
+                return text
+            end,
+            Set = function(self, newText)
+                SectionLabel.Text = newText
+            end,
+        }
+    end,
+
+    -- ==================== СОЗДАНИЕ ПАРАГРАФА ====================
+    CreateParagraph = function(self, options)
+        local text = options.text
+
+        local Paragraph = Instance.new("Frame")
+        Paragraph.Name = "Paragraph"
+        Paragraph.Parent = options.parent
+        Paragraph.BackgroundColor3 = Colors.Secondary
+        Paragraph.BorderSizePixel = 0
+        Paragraph.Size = UDim2.new(1, 0, 0, 60)
+        Paragraph:SetAttribute("Flag", options.flag)
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = Paragraph
+
+        local Title = Instance.new("TextLabel")
+        Title.Parent = Paragraph
+        Title.BackgroundTransparency = 1
+        Title.Position = UDim2.new(0, 10, 0, 10)
+        Title.Size = UDim2.new(1, -20, 0, 18)
+        Title.Font = Enum.Font.GothamBold
+        Title.Text = options.title
+        Title.TextColor3 = Colors.Text
+        Title.TextSize = 15
+        Title.TextXAlignment = Enum.TextXAlignment.Left
+        Title.TextYAlignment = Enum.TextYAlignment.Center
+
+        local Content = Instance.new("TextLabel")
+        Content.Parent = Paragraph
+        Content.BackgroundTransparency = 1
+        Content.Position = UDim2.new(0, 10, 0, 30)
+        Content.Size = UDim2.new(1, -20, 1, -40)
+        Content.Font = Enum.Font.Gotham
+        Content.Text = string.gsub(text, "\\n", "\n")
+        Content.TextColor3 = Colors.Text
+        Content.TextSize = 15
+        Content.TextWrapped = true
+        Content.TextXAlignment = Enum.TextXAlignment.Left
+        Content.TextYAlignment = Enum.TextYAlignment.Top
+
+        -- Автоматическая подстройка размера
+        local function updateSize()
+            local textService = game:GetService("TextService")
+            local textHeight = textService:GetTextSize(
+                Content.Text,
+                Content.TextSize,
+                Content.Font,
+                Vector2.new(Content.AbsoluteSize.X, math.huge)
+            ).Y
+            Paragraph.Size = UDim2.new(1, 0, 0, textHeight + 30 + 10)
+            Title.TextSize = Content.TextSize + 1
+        end
+
+        Content:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateSize)
+        Content:GetPropertyChangedSignal("Text"):Connect(updateSize)
+        task.defer(updateSize)
+
+        return {
+            Get = function()
+                return text
+            end,
+            Set = function(self, newText)
+                Content.Text = newText
+                updateSize()
+            end,
+        }
+    end,
+
+    -- ==================== СОЗДАНИЕ КНОПКИ ====================
+    CreateButton = function(self, options)
+        local flag = options.flag
+
+        local Button = Instance.new("Frame")
+        Button.Name = "Button"
+        Button.Parent = options.parent
+        Button.BackgroundColor3 = Colors.Secondary
+        Button.BorderSizePixel = 0
+        Button.Size = UDim2.new(1, 0, 0, 35)
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = Button
+
+        local Label = Instance.new("TextLabel")
+        Label.Parent = Button
+        Label.BackgroundTransparency = 1
+        Label.Position = UDim2.new(0, 10, 0, 0)
+        Label.Size = UDim2.new(1, -60, 1, 0)
+        Label.Font = Enum.Font.Gotham
+        Label.Text = options.text
+        Label.TextColor3 = Colors.Text
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.TextTruncate = Enum.TextTruncate.AtEnd
+        Label.ClipsDescendants = true
+
+        -- Автоматическое уменьшение размера текста при необходимости
+        local function adjustTextSize()
+            local textService = game:GetService("TextService")
+            local availableWidth = Label.AbsoluteSize.X
+            Label.TextSize = 10 -- Устанавливаем минимальный размер
+        end
+
+        Label:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustTextSize)
+        Label:GetPropertyChangedSignal("Text"):Connect(adjustTextSize)
+        task.defer(adjustTextSize)
+
+        -- Кнопка с иконкой
+        local ImageButton = Instance.new("ImageButton")
+        ImageButton.Parent = Button
+        ImageButton.BackgroundColor3 = Colors.Accent
+        ImageButton.BorderSizePixel = 0
+        ImageButton.Position = UDim2.new(1, -60, 0.5, -12)
+        ImageButton.Size = UDim2.new(0, 50, 0, 24)
+        ImageButton.Image = "rbxassetid://16898613613"
+        ImageButton.ImageRectSize = Vector2.new(48, 48)
+        ImageButton.ImageRectOffset = Vector2.new(771, 710)
+        ImageButton.ImageColor3 = Colors.Text
+        ImageButton.ScaleType = Enum.ScaleType.Fit
+
+        local ButtonCorner = Instance.new("UICorner")
+        ButtonCorner.CornerRadius = UDim.new(0, 8)
+        ButtonCorner.Parent = ImageButton
+
+        -- Анимация нажатия
+        ImageButton.MouseButton1Click:Connect(function()
+            local pressTween = TweenService:Create(
+                ImageButton,
+                TweenInfo.new(0.1),
+                {BackgroundColor3 = Color3.fromRGB(118, 23, 206)}
+            )
+            pressTween:Play()
+            
+            pressTween.Completed:Connect(function()
+                local releaseTween = TweenService:Create(
+                    ImageButton,
+                    TweenInfo.new(0.1),
+                    {BackgroundColor3 = Colors.Accent}
+                )
+                releaseTween:Play()
+            end)
+            
+            options.callback()
+        end)
+
+        return Button
+    end,
+
+    -- ==================== СОЗДАНИЕ РАЗДЕЛИТЕЛЯ ====================
+    CreateDivider = function(self, options)
+        local Divider = Instance.new("Frame")
+        Divider.Name = "Divider"
+        Divider.BackgroundTransparency = 1
+        Divider.BorderSizePixel = 0
+        Divider.Size = UDim2.new(1, 0, 0, options.height)
+        Divider.Parent = options.parent
+        return Divider
+    end,
+
+    -- ==================== СОЗДАНИЕ ПЕРЕКЛЮЧАТЕЛЯ ====================
+    CreateToggle = function(self, options)
+        local parent = options.parent
+        local text = options.text
+        local flag = options.flag
+        local default = options.default
+        local callback = options.callback
+        error("line 1484: attempt to index nil with 'Enabled'")
+    end,
+
+    -- ==================== СОЗДАНИЕ ВЫПАДАЮЩЕГО СПИСКА ====================
+    CreateDropdown = function(self, options)
+        local parent = options.parent
+        local text = options.text
+        local flag = options.flag
+        local callback = options.callback
+        local firstOption = options.options[1]
+        error("line 1618: attempt to index nil with 'Enabled'")
+    end,
+
+    -- ==================== СОЗДАНИЕ СЛАЙДЕРА ====================
+    CreateSlider = function(self, options)
+        local min = options.min
+        local max = options.max
+        local default = options.default
+        local callback = options.callback
+        
+        local HttpService = game:GetService("HttpService")
+
+        local Slider = Instance.new("Frame")
+        Slider.Name = "Slider"
+        Slider.Parent = options.parent
+        Slider.BackgroundColor3 = Colors.Secondary
+        Slider.BorderSizePixel = 0
+        Slider.Size = UDim2.new(1, 0, 0, 45)
+        Slider:SetAttribute("Flag", options.flag)
+        Slider:SetAttribute("Value", 0)
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = Slider
+
+        local Label = Instance.new("TextLabel")
+        Label.Parent = Slider
+        Label.BackgroundTransparency = 1
+        Label.Position = UDim2.new(0, 10, 0, 3)
+        Label.Size = UDim2.new(1, -70, 0, 20)
+        Label.Font = Enum.Font.Gotham
+        Label.Text = options.text
+        Label.TextColor3 = Colors.Text
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.TextTruncate = Enum.TextTruncate.AtEnd
+        Label.ClipsDescendants = true
+
+        -- Автоматическая подстройка размера текста
+        local function adjustTextSize()
+            Label.TextSize = 10
+        end
+
+        Label:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustTextSize)
+        Label:GetPropertyChangedSignal("Text"):Connect(adjustTextSize)
+        task.defer(adjustTextSize)
+
+        local ValueLabel = Instance.new("TextLabel")
+        ValueLabel.Parent = Slider
+        ValueLabel.BackgroundTransparency = 1
+        ValueLabel.Position = UDim2.new(1, -60, 0, 3)
+        ValueLabel.Size = UDim2.new(0, 50, 0, 20)
+        ValueLabel.Font = Enum.Font.Gotham
+        
+        error("internal 963: invalid argument #2 to 'format' (number expected, got nil)")
+    end,
+
+    -- ==================== СОЗДАНИЕ ПОЛЯ ВВОДА ====================
+    CreateInput = function(self, options)
+        local callback = options.callback
+
+        local Input = Instance.new("Frame")
+        Input.Name = "Input"
+        Input.Parent = options.parent
+        Input.BackgroundColor3 = Colors.Secondary
+        Input.BorderSizePixel = 0
+        Input.Size = UDim2.new(1, 0, 0, 35)
+        Input:SetAttribute("Flag", options.flag)
+        Input:SetAttribute("Value", "")
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = Input
+
+        local Label = Instance.new("TextLabel")
+        Label.Parent = Input
+        Label.BackgroundTransparency = 1
+        Label.Position = UDim2.new(0, 10, 0, 0)
+        Label.Size = UDim2.new(1, -90, 1, 0)
+        Label.Font = Enum.Font.Gotham
+        Label.Text = options.text
+        Label.TextColor3 = Colors.Text
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.TextTruncate = Enum.TextTruncate.AtEnd
+        Label.ClipsDescendants = true
+
+        -- Автоматическая подстройка размера текста
+        local function adjustTextSize()
+            Label.TextSize = 10
+        end
+
+        Label:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustTextSize)
+        Label:GetPropertyChangedSignal("Text"):Connect(adjustTextSize)
+        task.defer(adjustTextSize)
+
+        local TextBox = Instance.new("TextBox")
+        TextBox.Parent = Input
+        TextBox.BackgroundColor3 = Colors.Border
+        TextBox.BorderSizePixel = 0
+        TextBox.Position = UDim2.new(1, -80, 0.5, -12)
+        TextBox.Size = UDim2.new(0, 70, 0, 24)
+        TextBox.Font = Enum.Font.Gotham
+        TextBox.PlaceholderText = options.placeholder
+        TextBox.Text = ""
+        TextBox.TextColor3 = Colors.Text
+        TextBox.TextSize = 12
+        TextBox.TextXAlignment = Enum.TextXAlignment.Center
+        TextBox.ClipsDescendants = true
+
+        -- Автоматическая подстройка размера текста в TextBox
+        local function adjustBoxTextSize()
+            TextBox.TextSize = 10
+        end
+
+        TextBox:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustBoxTextSize)
+        TextBox:GetPropertyChangedSignal("Text"):Connect(adjustBoxTextSize)
+        task.defer(adjustBoxTextSize)
+
+        local Padding = Instance.new("UIPadding")
+        Padding.Parent = TextBox
+        Padding.PaddingLeft = UDim.new(0, 5)
+        Padding.PaddingRight = UDim.new(0, 5)
+
+        local BoxCorner = Instance.new("UICorner")
+        BoxCorner.CornerRadius = UDim.new(0, 8)
+        BoxCorner.Parent = TextBox
+
+        -- Обработка потери фокуса
+        TextBox.FocusLost:Connect(function()
+            Input:SetAttribute("Value", TextBox.Text)
+            callback(TextBox.Text)
+        end)
+
+        -- Обработка изменения атрибута
+        Input:GetAttributeChangedSignal("Value"):Connect(function()
+            TextBox.Text = Input:GetAttribute("Value")
+            callback(TextBox.Text)
+        end)
+
+        return {
+            Get = function()
+                return TextBox.Text
+            end,
+            Set = function(self, value)
+                TextBox.Text = value
+                Input:SetAttribute("Value", value)
+                callback(TextBox.Text)
+            end,
+        }
+    end,
+
+    -- ==================== СОЗДАНИЕ ПРИВЯЗКИ КЛАВИШ ====================
+    CreateKeyBind = function(self, options)
+        local default = options.default
+        local callback = options.callback
+        
+        local HttpService = game:GetService("HttpService")
+        local autoLoadData = HttpService:JSONDecode('{"Load":true}')
+        local Load = autoLoadData.Load
+
+        local KeyBind = Instance.new("Frame")
+        KeyBind.Name = "KeyBind"
+        KeyBind.Parent = options.parent
+        KeyBind.BackgroundColor3 = Colors.Secondary
+        KeyBind.BorderSizePixel = 0
+        KeyBind.Size = UDim2.new(1, 0, 0, 35)
+        KeyBind:SetAttribute("Flag", options.flag)
+        KeyBind:SetAttribute("Value", default)
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = KeyBind
+
+        local Label = Instance.new("TextLabel")
+        Label.Parent = KeyBind
+        Label.BackgroundTransparency = 1
+        Label.Position = UDim2.new(0, 10, 0, 0)
+        Label.Size = UDim2.new(1, -90, 1, 0)
+        Label.Font = Enum.Font.Gotham
+        Label.Text = options.text
+        Label.TextColor3 = Colors.Text
+        Label.TextSize = 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.TextTruncate = Enum.TextTruncate.AtEnd
+        Label.ClipsDescendants = true
+
+        -- Автоматическая подстройка размера текста
+        local function adjustTextSize()
+            Label.TextSize = 10
+        end
+
+        Label:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustTextSize)
+        Label:GetPropertyChangedSignal("Text"):Connect(adjustTextSize)
+        task.defer(adjustTextSize)
+
+        local KeyButton = Instance.new("TextButton")
+        KeyButton.Parent = KeyBind
+        KeyButton.BackgroundColor3 = Colors.Border
+        KeyButton.BorderSizePixel = 0
+        KeyButton.Position = UDim2.new(1, -75, 0.5, -12)
+        KeyButton.Size = UDim2.new(0, 65, 0, 24)
+        KeyButton.Font = Enum.Font.Gotham
+        KeyButton.Text = default
+        KeyButton.TextColor3 = Colors.Text
+        KeyButton.TextSize = 12
+        KeyButton.TextTruncate = Enum.TextTruncate.AtEnd
+        KeyButton.ClipsDescendants = true
+
+        -- Автоматическая подстройка размера текста кнопки
+        local function adjustButtonTextSize()
+            KeyButton.TextSize = 10
+        end
+
+        KeyButton:GetPropertyChangedSignal("AbsoluteSize"):Connect(adjustButtonTextSize)
+        KeyButton:GetPropertyChangedSignal("Text"):Connect(adjustButtonTextSize)
+        task.defer(adjustButtonTextSize)
+
+        local ButtonCorner = Instance.new("UICorner")
+        ButtonCorner.CornerRadius = UDim.new(0, 8)
+        ButtonCorner.Parent = KeyButton
+
+        -- Обработка нажатия клавиш
+        local InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            -- Логика обработки нажатий
+        end)
+
+        -- Обработка клика на кнопку
+        KeyButton.MouseButton1Click:Connect(function()
+            KeyButton.Text = "Press any key..."
+            KeyButton.BackgroundColor3 = Colors.Accent
+            
+            local WaitForKey = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                -- Логика ожидания нажатия клавиши
+            end)
+        end)
+
+        -- Обработка удаления
+        KeyBind.AncestryChanged:Connect(function()
+            local parent = KeyBind.Parent
+            -- Логика при изменении родителя
+        end)
+
+        -- Обработка изменения значения
+        local currentValue = default
+        KeyBind:GetAttributeChangedSignal("Value"):Connect(function()
+            currentValue = KeyBind:GetAttribute("Value")
+            KeyButton.Text = currentValue
+            KeyButton.BackgroundColor3 = Colors.Border
+        end)
+
+        return {
+            Get = function()
+                return currentValue
+            end,
+            Set = function(self, value)
+                KeyBind:SetAttribute("Value", value)
+                KeyButton.Text = value
+                KeyButton.BackgroundColor3 = Colors.Border
+            end,
+        }
+    end,
+
+    -- ==================== СОЗДАНИЕ ПАЛИТРЫ ЦВЕТОВ ====================
+    CreateColorPicker = function(self, options)
+        local parent = options.parent
+        local text = options.text
+        local flag = options.flag
+        local default = options.default
+        local callback = options.callback
+        error("line 2484: attempt to index nil with 'Enabled'")
+    end,
+
+    -- ==================== СОЗДАНИЕ УВЕДОМЛЕНИЯ ====================
+    CreateNotify = function(self, options)
+        local title = options.title
+        local description = options.description
+        local time = options.time
+
+        local NotificationGui = Instance.new("ScreenGui")
+        NotificationGui.Name = "NotificationGui"
+        NotificationGui.Parent = game.CoreGui
+        NotificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+        local ViewportSize = workspace.CurrentCamera.ViewportSize
+        local notifWidth = math.min(ViewportSize.X * 0.25, 300)
+        local notifX = ViewportSize.X
+        
+        error("line 2923: attempt to compare table < number")
+    end,
+
+    -- ==================== ПОКАЗАТЬ ВКЛАДКУ НАСТРОЕК ====================
+    ShowSettingsTab = function(self)
+        error("line 830: Main GUI must be created first!")
+    end,
+
+    -- ==================== СОЗДАТЬ ВКЛАДКУ НАСТРОЕК ====================
+    CreateSettingsTab = function(self)
+        error("line 830: Main GUI must be created first!")
+    end,
+
+    -- ==================== УДАЛЕНИЕ ====================
+    Delete = function(self)
+        error("line 3167: attempt to index nil with 'Enabled'")
+    end,
+
+    -- ==================== СОХРАНЕНИЕ ====================
+    Save = function(self)
+        error("line 3124: attempt to index nil with 'Enabled'")
+    end,
+
+    -- ==================== ПОЛУЧИТЬ ЗНАЧЕНИЕ ФЛАГА ====================
+    GetFlagValue = function(self, flag)
+        -- Здесь должна быть логика получения значения флага из конфигурации
+        return nil
+    end,
+
+    -- ==================== АВТОСОХРАНЕНИЕ/ЗАГРУЗКА ====================
+    AutoSaveLoad = function(self, enabled)
+        local HttpService = game:GetService("HttpService")
+        makefolder("AshLabs")
+        
+        local saveData = HttpService:JSONEncode({
+            Load = true,
+        })
+        writefile("AshLabs/_GLOBAL.json", saveData)
+    end,
+
+    -- ==================== ЗАГРУЗКА ====================
+    Load = function(self)
+        local HttpService = game:GetService("HttpService")
+        -- Здесь должна быть логика загрузки конфигурации
+    end,
+}
